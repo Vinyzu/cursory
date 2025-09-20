@@ -1,0 +1,116 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cursory"
+version = "1.0.0"
+description = "Generate 100% human-realistic Mouse Trajectories with Timings. "
+readme = "README.md"
+requires-python = ">=3.10"
+license = "GPL-3.0-or-later"
+authors = [{ name = "Vinyzu" }]
+classifiers = [
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Typing :: Typed",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+]
+dynamic = ["dependencies", "optional-dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = "requirements.txt" }
+
+[tool.setuptools.package-data]
+cursory = ["py.typed", "trajectories.json.gz"]
+
+[project.urls]
+Homepage = "https://github.com/Vinyzu/cursory"
+
+
+[tool.ruff]
+# Increase the line length. This breaks PEP8 but it is way easier to work with.
+# The original reason for this limit was a standard vim terminal is only 79 characters,
+# but this doesn't really apply anymore.
+line-length = 119
+# Target Python 3.12.
+target-version = "py312"
+# Automatically fix auto-fixable issues.
+fix = true
+# The directory containing the source code.
+src = ["src"]
+exclude = [
+    # Want to keep Formatting in the requirements file.
+    "requirements.txt",
+]
+
+[tool.ruff.lint]
+# Enable all linting rules.
+select = ["ALL"]
+# Ignore some of the most obnoxious linting errors.
+ignore = [
+    # Missing docstrings.
+    "D100",
+    "D104",
+    "D105",
+    "D106",
+    "D107",
+    # Docstring whitespace.
+    "D203",
+    "D205",
+    "D212",
+    # Docstring punctuation.
+    "D415",
+    # Docstring quotes.
+    "D301",
+    # Print statements.
+    "T20",
+    # TODOs.
+    "TD002",
+    "TD003",
+    "FIX",
+    # Future annotations.
+    "FA",
+    # Error messages.
+    "EM",
+    "TRY003",
+    # Path/Opens
+    "PTH123",
+    # Trailing commas
+    "COM812",
+    # Magic Values
+    "PLR2004",
+    # Pseudo-random numbers
+    "S311",
+    # Hardcoded Password
+    "S105",
+    # Commented-out code
+    "ERA001",
+    # Boolean Type Arguments
+    "FBT001",
+    "FBT002",
+    # Implicit Namespaces, conflicts with Reflex
+    "INP001",
+    # Functions with too many arguments
+    "PLR0913",
+]
+
+[tool.ruff.lint.pydocstyle]
+# Use Google-style docstrings.
+convention = "google"
+ignore-decorators = ["typing.overload"]
+
+[tool.mypy]
+strict = true
+disallow_untyped_decorators = false
+disallow_subclassing_any = false
