@@ -50,7 +50,7 @@ trajectory, timings = generate_trajectory(target_start=..., target_end=...)
 
 |                                                       Random Points                                                            |                                                        Same Points                                                           |                                                        Points / Velocity                                                           |
 |:------------------------------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------------:|
-| <img height="500" alt="Random Points" src="https://github.com/user-attachments/assets/07eaebb0-6798-45d1-9182-2ffd5f1e42d7" /> | <img height="500" alt="Same Points" src="https://github.com/user-attachments/assets/81eb79df-e274-4200-b74c-5f57f4899a3f" /> | <img height="500" alt="SCR-20250920-oegv" src="https://github.com/user-attachments/assets/e7fad0e3-1b56-4c85-a139-42601288701c" /> 
+| <img height="500" alt="Random Points" src="https://github.com/user-attachments/assets/07eaebb0-6798-45d1-9182-2ffd5f1e42d7" /> | <img height="500" alt="Same Points" src="https://github.com/user-attachments/assets/81eb79df-e274-4200-b74c-5f57f4899a3f" /> | <img height="500" alt="Points / Velocity" src="https://github.com/user-attachments/assets/e7fad0e3-1b56-4c85-a139-42601288701c" /> 
 
 ---
 
