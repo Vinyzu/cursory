@@ -48,16 +48,16 @@ trajectory, timings = generate_trajectory(target_start=..., target_end=...)
 
 ## Example Trajectories
 
-| Random Points         | Same Points         | Points / Velocity |
-| :-----------: | :--------------: | :-----:|
-| <img height="500" alt="Random Points" src="https://github.com/user-attachments/assets/07eaebb0-6798-45d1-9182-2ffd5f1e42d7" /> | <img height="500" alt="Same Points" src="https://github.com/user-attachments/assets/81eb79df-e274-4200-b74c-5f57f4899a3f" />  | <img height="500" alt="SCR-20250920-oegv" src="https://github.com/user-attachments/assets/e7fad0e3-1b56-4c85-a139-42601288701c" />
+|                                                       Random Points                                                            |                                                        Same Points                                                           |                                                        Points / Velocity                                                           |
+|:------------------------------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------------:|
+| <img height="500" alt="Random Points" src="https://github.com/user-attachments/assets/07eaebb0-6798-45d1-9182-2ffd5f1e42d7" /> | <img height="500" alt="Same Points" src="https://github.com/user-attachments/assets/81eb79df-e274-4200-b74c-5f57f4899a3f" /> | <img height="500" alt="SCR-20250920-oegv" src="https://github.com/user-attachments/assets/e7fad0e3-1b56-4c85-a139-42601288701c" /> 
 
 ---
 
 ## Methodology
 
 Cursory generates Mouse Trajectories following these steps:
-1. **Find a close matching human Trajectory**: Cursory has a database of >1000 Mouse Trajectories recorded from real humans. It finds the closest matching Trajectory to the target Points with some amount of randomization.
+1. **Find a close matching human Trajectory**: Cursory has a database of thousands of Trajectories recorded from real humans. It finds the closest matching Trajectory to the target Points with some amount of randomization.
 2. **Morph the Trajectory**: The Trajectory is morphed to fit the target Points exactly, while keeping the overall shape as close to the original as possible.
 3. **Add Noise**: The Trajectory is jittered and knotted, to alter positions slightly to avoid fingerprinting by hash-fingerprinting.
 4. **Regenerating with Timings**: The Trajectory is regenerated using the Trajectory Frequency, with some noise added to the timings to avoid.

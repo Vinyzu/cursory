@@ -2,7 +2,12 @@ import random
 import time
 
 from cursory import Point, generate_trajectory
-from plot_trajectories import plot_timings_grid, plot_trajectories_grid, plot_trajectories_overlayed
+from plot_trajectories import (
+    plot_timings_grid,
+    plot_trajectories_grid,
+    plot_trajectories_overlayed,
+    plot_trajectory_and_velocity
+)
 
 if __name__ == "__main__":
     generated_trajectories: list[tuple[list[Point], list[int], Point, Point]] = []
@@ -32,3 +37,4 @@ if __name__ == "__main__":
     plot_trajectories_grid(generated_trajectories)
     plot_trajectories_overlayed(generated_trajectories)
     plot_timings_grid(generated_trajectories)
+    plot_trajectory_and_velocity(generated_trajectories[0])

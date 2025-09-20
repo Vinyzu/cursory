@@ -153,3 +153,78 @@ def plot_trajectories_overlayed(
     plt.axis("equal")
     plt.tight_layout()
     plt.show()
+
+def plot_trajectory_and_velocity(
+    trajectory_data: tuple[list[Point], list[int], Point, Point],
+) -> None:
+    """Plot a single trajectory and its velocity profile.
+
+    Args:
+        trajectory_data (Tuple[List[Point], List[int], Point, Point]):
+            A tuple containing:
+            - Trajectory points (List[Point]).
+            - Timings (List[int]).
+            - Target start point (Point).
+            - Target end point (Point).
+    """
+    trajectory_points, timings, target_start, target_end = trajectory_data
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 12))
+
+    # Convert point lists to numpy arrays for efficient plotting
+    trajectory_points_np = np.array(trajectory_points)
+
+    # Plot the generated trajectory in a blue line
+    ax1.plot(
+        trajectory_points_np[:, 0],
+        trajectory_points_np[:, 1],
+        "b-",
+        linewidth=2,
+        label="Trajectory",
+    )
+    ax1.scatter(
+        trajectory_points_np[:, 0],
+        trajectory_points_np[:, 1],
+        color="blue",
+        s=10,
+        label="Trajectory Points",
+    )
+
+    # Plot target start and end points as larger green and red scatters
+    ax1.scatter(
+        [target_start[0]],
+        [target_start[1]],
+        color="green",
+        s=50,
+        label="Start",
+        zorder=3,
+    )
+    ax1.scatter([target_end[0]], [target_end[1]], color="red", s=50, label="End", zorder=3)
+
+    ax1.set_title("Trajectory")
+    ax1.legend(fontsize="x-small")
+    ax1.grid(True)  # noqa: FBT003
+    ax1.axis("equal")
+
+    # Calculate velocities
+    velocities = []
+    for i in range(1, len(trajectory_points)):
+        dx = trajectory_points[i][0] - trajectory_points[i - 1][0]
+        dy = trajectory_points[i][1] - trajectory_points[i - 1][1]
+        dt = (timings[i] - timings[i - 1]) / 1000
+        if dt > 0:
+            velocity = ((dx ** 2 + dy ** 2) ** 0.5) / dt
+            velocities.append(velocity)
+        else:
+            velocities.append(0.0)
+    velocities_np = np.array(velocities)
+    time_intervals_np = np.array([(timings[i] - timings[i - 1]) / 1000 for i in range(1, len(timings))])
+    time_stamps_np = np.cumsum(time_intervals_np)
+
+    # Plot velocity profile
+    ax2.plot(time_stamps_np, velocities_np, "r-")
+    ax2.set_title("Velocity Profile")
+    ax2.set_xlabel("Time (s)")
+    ax2.set_ylabel("Velocity (pixels/s)")
+    ax2.grid(True)  # noqa: FBT003
+    plt.tight_layout()
+    plt.show()
