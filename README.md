@@ -5,7 +5,7 @@
 
 <p align="center">
     <a href="https://pypi.org/project/cursory/">
-        <img alt="Cursory Version" src="https://img.shields.io/pypi/v/cursory&label=Version">
+        <img alt="Cursory Version" src="https://img.shields.io/pypi/v/cursory?label=Version">
     </a>
     <a href="https://pypi.org/project/cursory/">
         <img alt="Pypi Downloads" src="https://img.shields.io/pepy/dt/cursory?color=seagreen">
