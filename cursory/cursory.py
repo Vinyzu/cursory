@@ -35,7 +35,7 @@ def generate_trajectory(
     # Normalize timings to start at 0
     timings = [t - timings[0] for t in timings]
     total_time = timings[-1]
-    # Milliseconds between samples
+    # Milliseconds between samples; clamp to 1 so very high frequencies do not stall the loop.
     base_step = max(1, 1000 // frequency)
 
     sampled_points: list[Point] = []
@@ -49,7 +49,7 @@ def generate_trajectory(
         jitter_scale = max(1.5, frequency_randomizer)
         jitter = int(random.gauss(0, frequency_randomizer / jitter_scale))
         jitter = max(-frequency_randomizer, min(frequency_randomizer, jitter))
-        # Clamp the jittered time within the trajectory duration
+        # Clamp within the trajectory duration and never let a later sample move backward in time.
         sample_time = max(last_sample_time, min(total_time, max(0, current_time + jitter)))
 
         # Find surrounding keyframes for the jittered time
