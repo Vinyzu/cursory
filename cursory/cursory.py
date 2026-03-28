@@ -36,10 +36,11 @@ def generate_trajectory(
     timings = [t - timings[0] for t in timings]
     total_time = timings[-1]
     # Milliseconds between samples
-    base_step = 1000 // frequency
+    base_step = max(1, 1000 // frequency)
 
     sampled_points: list[Point] = []
     sampled_timings: list[int] = []
+    last_sample_time = 0
 
     # Sample the trajectory at regular intervals with jitter
     current_time = 0
@@ -49,7 +50,7 @@ def generate_trajectory(
         jitter = int(random.gauss(0, frequency_randomizer / jitter_scale))
         jitter = max(-frequency_randomizer, min(frequency_randomizer, jitter))
         # Clamp the jittered time within the trajectory duration
-        sample_time = max(0, min(total_time, current_time + jitter))
+        sample_time = max(last_sample_time, min(total_time, max(0, current_time + jitter)))
 
         # Find surrounding keyframes for the jittered time
         prev_idx = max(i for i, t in enumerate(timings) if t <= sample_time)
@@ -68,6 +69,7 @@ def generate_trajectory(
         # Save interpolated position and the actual jittered time
         sampled_points.append((point_x, point_y))
         sampled_timings.append(sample_time)
+        last_sample_time = sample_time
 
         # Step forward by the base interval (without jitter here)
         current_time += base_step
