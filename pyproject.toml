@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cursory"
-version = "1.0.1"
+version = "1.1.0"
 description = "Generate 100% human-realistic Mouse Trajectories with Timings. "
 readme = "README.md"
 requires-python = ">=3.10"
@@ -26,7 +26,10 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Internet :: WWW/HTTP :: Browsers",
 ]
-dynamic = ["dependencies", "optional-dependencies"]
+dynamic = ["dependencies"]
+
+[project.optional-dependencies]
+dev = ["pytest~=8.3"]
 
 [tool.setuptools.dynamic]
 dependencies = { file = "requirements.txt" }
@@ -36,6 +39,10 @@ cursory = ["py.typed", "trajectories.json.gz"]
 
 [project.urls]
 Homepage = "https://github.com/Vinyzu/cursory"
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 
 [tool.ruff]
