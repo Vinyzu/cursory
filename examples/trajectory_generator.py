@@ -6,7 +6,7 @@ from plot_trajectories import (
     plot_timings_grid,
     plot_trajectories_grid,
     plot_trajectories_overlayed,
-    plot_trajectory_and_velocity
+    plot_trajectory_and_velocity,
 )
 
 if __name__ == "__main__":

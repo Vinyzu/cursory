@@ -16,7 +16,7 @@ def plot_trajectories_grid(
             - Target start point (Point).
             - Target end point (Point).
     """
-    fig, axes = plt.subplots(2, 5, figsize=(20, 10))
+    _fig, axes = plt.subplots(2, 5, figsize=(20, 10))
     axes = axes.flatten()
 
     for i, (trajectory_points, _, target_start, target_end) in enumerate(all_trajectories):
@@ -74,7 +74,7 @@ def plot_timings_grid(
             - Target start point (Point).
             - Target end point (Point).
     """
-    fig, axes = plt.subplots(2, 5, figsize=(20, 10))
+    _fig, axes = plt.subplots(2, 5, figsize=(20, 10))
     axes = axes.flatten()
 
     for i, (_, timings, _, _) in enumerate(all_trajectories):
@@ -154,6 +154,7 @@ def plot_trajectories_overlayed(
     plt.tight_layout()
     plt.show()
 
+
 def plot_trajectory_and_velocity(
     trajectory_data: tuple[list[Point], list[int], Point, Point],
 ) -> None:
@@ -168,7 +169,7 @@ def plot_trajectory_and_velocity(
             - Target end point (Point).
     """
     trajectory_points, timings, target_start, target_end = trajectory_data
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 12))
+    _fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 12))
 
     # Convert point lists to numpy arrays for efficient plotting
     trajectory_points_np = np.array(trajectory_points)
@@ -212,7 +213,7 @@ def plot_trajectory_and_velocity(
         dy = trajectory_points[i][1] - trajectory_points[i - 1][1]
         dt = (timings[i] - timings[i - 1]) / 1000
         if dt > 0:
-            velocity = ((dx ** 2 + dy ** 2) ** 0.5) / dt
+            velocity = ((dx**2 + dy**2) ** 0.5) / dt
             velocities.append(velocity)
         else:
             velocities.append(0.0)

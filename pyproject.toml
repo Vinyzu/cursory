@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cursory"
-version = "1.1.0"
+version = "2.0.0"
 description = "Generate 100% human-realistic Mouse Trajectories with Timings. "
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "GPL-3.0-or-later"
 authors = [{ name = "Vinyzu" }]
 classifiers = [
@@ -16,7 +16,10 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
     "Typing :: Typed",
     "Topic :: Scientific/Engineering",
@@ -30,6 +33,9 @@ dynamic = ["dependencies"]
 
 [project.optional-dependencies]
 dev = ["pytest~=8.3"]
+
+[dependency-groups]
+dev = ["pytest~=8.3", "ruff", "ty"]
 
 [tool.setuptools.dynamic]
 dependencies = { file = "requirements.txt" }
@@ -50,8 +56,7 @@ testpaths = ["tests"]
 # The original reason for this limit was a standard vim terminal is only 79 characters,
 # but this doesn't really apply anymore.
 line-length = 119
-# Target Python 3.12.
-target-version = "py312"
+target-version = "py311"
 # Automatically fix auto-fixable issues.
 fix = true
 # The directory containing the source code.
@@ -110,7 +115,13 @@ ignore = [
     "INP001",
     # Functions with too many arguments
     "PLR0913",
+    "PLR0917",
+    # The project license is declared at package level.
+    "CPY001",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["ANN", "D103", "S101"]
 
 [tool.ruff.lint.pydocstyle]
 # Use Google-style docstrings.
@@ -121,3 +132,6 @@ ignore-decorators = ["typing.overload"]
 strict = true
 disallow_untyped_decorators = false
 disallow_subclassing_any = false
+
+[tool.ty.src]
+exclude = ["examples"]

@@ -8,7 +8,9 @@ from cursory import generate_trajectory
 from playwright.sync_api import Playwright, sync_playwright
 from selenium_driverless.utils.utils import sel_driverless_path  # type: ignore[import-untyped]
 
-def high_precision_sleep(duration):
+
+def high_precision_sleep(duration: float) -> None:
+    """Wait for a duration with higher precision than a single sleep call."""
     start_time = time.perf_counter()
     while True:
         elapsed_time = time.perf_counter() - start_time
@@ -16,9 +18,10 @@ def high_precision_sleep(duration):
         if remaining_time <= 0:
             break
         if remaining_time > 0.02:  # Sleep for 5ms if remaining time is greater
-            time.sleep(max(remaining_time/2, 0.0001))  # Sleep for the remaining time or minimum sleep interval
+            time.sleep(max(remaining_time / 2, 0.0001))  # Sleep for the remaining time or minimum sleep interval
         else:
             pass
+
 
 def run(playwright: Playwright) -> None:
     """Run a sample test using Playwright."""
@@ -64,7 +67,8 @@ def run(playwright: Playwright) -> None:
         page.mouse.click(end_point[0], end_point[1])
         page.wait_for_timeout(1000)
 
-    print(f"Total Points: {total_points}, Timeout Points: {timeout_points}, Percentage: {(timeout_points/total_points)*100:.2f}%")
+    percentage = (timeout_points / total_points) * 100
+    print(f"Total Points: {total_points}, Timeout Points: {timeout_points}, Percentage: {percentage:.2f}%")
     browser.close()
 
 
