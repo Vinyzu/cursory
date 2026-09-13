@@ -11,7 +11,7 @@
         <img alt="Pypi Downloads" src="https://img.shields.io/pepy/dt/cursory?color=seagreen">
     </a>
     <a href="https://github.com/Vinyzu/cursory/blob/main/LICENSE">
-        <img src="https://img.shields.io/badge/License-GNU%20GPL-green">
+        <img src="https://img.shields.io/badge/License-GNU%20LGPL-green">
     </a>
     <br/>
     <a href="https://discordapp.com/users/935224495126487150">
@@ -73,7 +73,9 @@ Cursory generates Mouse Trajectories following these steps:
 ## Copyright and License
 © [Vinyzu](https://github.com/Vinyzu/)
 <br>
-[GNU GPL](https://choosealicense.com/licenses/gpl-3.0/)
+[GNU LGPL](https://www.gnu.org/licenses/lgpl-3.0.html)
+
+All Cursory versions are retroactively dual-licensed under LGPLv3-or-later and GPLv3-or-later.
 
 (Commercial Usage is allowed, but source, license and copyright has to made available. Cursory does not provide and Liability or Warranty)
 
