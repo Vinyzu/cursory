@@ -12,6 +12,7 @@ from cursory.trajectory_selection import (
     TRAJECTORIES_DY,
     find_closest_trajectory,
     jitter_trajectory,
+    knot_trajectory,
 )
 
 BASE_POINTS = [(0.0, 0.0), (5.0, 5.0), (10.0, 10.0)]
@@ -178,3 +179,58 @@ def test_jitter_is_lateral_and_not_forced_to_alternate():
 
     np.testing.assert_allclose(jittered[:, 0], np.arange(20))
     assert np.any(jittered[1:, 1] * jittered[:-1, 1] > 0)
+
+
+@pytest.mark.parametrize("noise", ["jitter", "knots"])
+@pytest.mark.parametrize(
+    "points",
+    [
+        [(10, 20)],
+        [(10, 20)] * 4,
+        [(0, 0), (0, 0), (25, 40), (50, 50), (50, 50)],
+    ],
+)
+def test_noise_preserves_endpoints_and_stationary_paths(noise, points):
+    rng = np.random.default_rng(1)
+    if noise == "jitter":
+        output = jitter_trajectory(points, 400, scale=1, rng=rng)
+    else:
+        output = knot_trajectory(points, points[0], points[-1], rng=rng)
+
+    np.testing.assert_array_equal(output[0], points[0])
+    np.testing.assert_array_equal(output[-1], points[-1])
+    assert np.isfinite(output).all()
+    if points[0] == points[-1]:
+        np.testing.assert_array_equal(output, points)
+    else:
+        assert not np.array_equal(output[2], points[2])
+
+
+def test_noise_does_not_depend_on_recording_or_target_screen_position(monkeypatch):
+    points = np.array([(10.0, 20.0), (35.0, 70.0), (65.0, 80.0), (110.0, 120.0)])
+    recorded = {"points": points.tolist(), "timing": [0, 100, 200, 300], "length": 160.0}
+
+    def select(start, end, **_kwargs):
+        dx, dy = np.subtract(end, start)
+        return recorded, dx, dy, math.hypot(dx, dy)
+
+    monkeypatch.setattr(trajectory_selection, "find_closest_trajectory", select)
+    first, first_timings = generate_trajectory((960.0, 540.0), (960.0, 240.0), seed=42)
+    recorded["points"] = np.add(points, (2000.0, -1000.0)).tolist()
+    second, second_timings = generate_trajectory((960.0, 540.0), (960.0, 240.0), seed=42)
+    third, third_timings = generate_trajectory((1500.0, 900.0), (1500.0, 600.0), seed=42)
+
+    np.testing.assert_allclose(first, second, atol=1e-8, rtol=0)
+    np.testing.assert_allclose(first, np.asarray(third) - (540.0, 360.0), atol=1e-8, rtol=0)
+    assert first_timings == second_timings == third_timings
+
+
+def test_reproduced_upward_move_has_no_artificial_endpoint_reversal():
+    points, _timings = generate_trajectory((960.0, 540.0), (960.0, 240.0), seed=2000001)
+    points = np.asarray(points)
+    arc = np.concatenate(([0.0], np.cumsum(np.linalg.norm(np.diff(points, axis=0), axis=1))))
+    # Compare directions over the final two 5-pixel stretches, ignoring sample density and endpoint pauses.
+    positions = np.column_stack([np.interp(arc[-1] - np.array([10, 5, 0]), arc, axis) for axis in points.T])
+    first, second = np.diff(positions, axis=0)
+
+    assert np.dot(first, second) > 0.5 * np.linalg.norm(first) * np.linalg.norm(second)

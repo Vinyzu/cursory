@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 # Define type aliases for better readability
 Point = tuple[float, float]
@@ -243,6 +244,15 @@ def morph_trajectory(
     return morphed_points_list
 
 
+def _endpoint_weights(points: NDArray[np.float64]) -> NDArray[np.float64]:
+    """Fade added displacement to zero with zero slope at both ends of the path."""
+    progress = np.concatenate(([0.0], np.cumsum(np.linalg.norm(np.diff(points, axis=0), axis=1))))
+    if progress[-1] == 0:
+        return np.zeros(len(points))
+    progress /= progress[-1]
+    return (4 * progress * (1 - progress)) ** 2
+
+
 def jitter_trajectory(
     points: list[Point],
     trajectory_length: float,
@@ -264,7 +274,7 @@ def jitter_trajectory(
         rng = np.random.default_rng()
 
     # Convert points to numpy array
-    points_np = np.array(points)
+    points_np = np.array(points, dtype=float)
     # Scale jitter based on trajectory length
     length_scale = min(1.0, trajectory_length / 400)
 
@@ -283,6 +293,7 @@ def jitter_trajectory(
     # Average distances to determine adaptive jitter scale
     avg_distances = (distances_prev + distances_next) / 2
     adaptive_scales = scale * (avg_distances / np.maximum(avg_distances, 1)) * length_scale
+    adaptive_scales *= _endpoint_weights(points_np)
 
     # Use correlated lateral drift instead of forcing every sample to reverse direction.
     tangents = np.empty_like(points_np)
@@ -302,9 +313,7 @@ def jitter_trajectory(
     correlation = 0.75
     innovation_scale = math.sqrt(1 - correlation**2)
     for index in range(1, len(points)):
-        lateral_offsets[index] = (
-            correlation * lateral_offsets[index - 1] + innovation_scale * innovations[index]
-        )
+        lateral_offsets[index] = correlation * lateral_offsets[index - 1] + innovation_scale * innovations[index]
 
     jittered_points = points_np + normals * (lateral_offsets * adaptive_scales)[:, np.newaxis]
     jittered_points_list: list[Point] = jittered_points.tolist()
@@ -386,7 +395,7 @@ def knot_trajectory(
         rng = np.random.default_rng()
 
     # Convert trajectory points to numpy array
-    traj_points_np = np.array(traj_points)
+    traj_points_np = np.array(traj_points, dtype=float)
     knot_points = np.zeros_like(traj_points_np, dtype=float)
 
     for _ in range(num_knots):
@@ -415,13 +424,10 @@ def knot_trajectory(
         knot_offsets = diff_vectors * scaling_factor[:, np.newaxis]
         knot_points += knot_offsets
 
-    # Apply square-root scaling to knot displacements for smoother effect
-    def sqrt_anything_np(x):  # type: ignore[no-untyped-def] # noqa: ANN202,ANN001
-        # Element-wise square root with sign preservation
-        return np.copysign(np.sqrt(np.abs(x)), x)
-
-    # Apply displacements to trajectory points
-    knotted_points = traj_points_np + sqrt_anything_np(knot_points)  # type: ignore[no-untyped-call]
+    # Keep knot displacements small and fade them out at the endpoints.
+    offsets = np.copysign(np.sqrt(np.abs(knot_points)), knot_points)
+    offsets *= _endpoint_weights(traj_points_np)[:, np.newaxis]
+    knotted_points = traj_points_np + offsets
     knotted_points_list: list[Point] = knotted_points.tolist()
     return knotted_points_list
 
@@ -465,10 +471,9 @@ def find_trajectory(
         start_time = timings[0]
         timings = [start_time + ((timing - start_time) * time_scale) for timing in timings]
 
-    # Apply jitter to the morphed trajectory to add variation
-    jittered_points = jitter_trajectory(selected_trajectory["points"], len_tar, rng=rng)
+    # Apply noise in target coordinates so source screen position cannot affect the shape.
+    morphed_points = morph_trajectory(selected_trajectory["points"], target_start, target_end, dx_tar, dy_tar, len_tar)
+    jittered_points = jitter_trajectory(morphed_points, len_tar, rng=rng)
     # Apply knotting to the jittered trajectory to further modify its shape
     knotted_points = knot_trajectory(jittered_points, target_start, target_end, rng=rng)
-    # Final morphing to ensure exact fit between target start and end points
-    morphed_points = morph_trajectory(knotted_points, target_start, target_end, dx_tar, dy_tar, len_tar)
-    return morphed_points, timings
+    return knotted_points, timings
