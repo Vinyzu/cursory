@@ -146,7 +146,7 @@ def test_directness_shifts_selection_without_excluding_extremes(monkeypatch):
         {"points": [(0.0, 0.0), (90.0, 20.0), (100.0, 0.0)], "timing": [0, 5, 10], "length": 112.0},
         {"points": [(0.0, 0.0), (0.0, 100.0), (100.0, 0.0)], "timing": [0, 5, 10], "length": 241.0},
     ]
-    monkeypatch.setattr(trajectory_selection, "find_nearest_trajectory", lambda *_args, **_kwargs: candidates)
+    monkeypatch.setattr(trajectory_selection, "find_nearest_trajectories", lambda *_args, **_kwargs: candidates)
 
     low_selections = []
     high_selections = []
