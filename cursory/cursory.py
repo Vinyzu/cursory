@@ -1,4 +1,5 @@
 import math
+from bisect import bisect_right
 from collections.abc import Sequence
 
 import numpy as np
@@ -91,7 +92,7 @@ def generate_trajectory(
     # Sample the trajectory using the selected human timing pattern.
     for sample_time in sampled_timings:
         # Find surrounding keyframes for the sample time
-        prev_idx = max(i for i, t in enumerate(timings) if t <= sample_time)
+        prev_idx = bisect_right(timings, sample_time) - 1
         next_idx = min(prev_idx + 1, len(timings) - 1)
 
         prev_point, prev_time = trajectory_points[prev_idx], timings[prev_idx]

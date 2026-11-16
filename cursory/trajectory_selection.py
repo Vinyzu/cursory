@@ -24,6 +24,7 @@ TRAJECTORIES_DY = np.array(
     [traj["points"][-1][1] - traj["points"][0][1] for traj in LOADED_TRAJECTORIES],
 )
 TRAJECTORIES_DISPLACEMENTS = np.hypot(TRAJECTORIES_DX, TRAJECTORIES_DY)
+_TRAJECTORIES_DISPLACEMENTS_F32 = TRAJECTORIES_DISPLACEMENTS.astype(np.float32)
 TRAJECTORIES_LENGTHS = np.array([traj["length"] for traj in LOADED_TRAJECTORIES])
 TRAJECTORIES_EFFICIENCIES = np.divide(
     TRAJECTORIES_DISPLACEMENTS,
@@ -32,6 +33,19 @@ TRAJECTORIES_EFFICIENCIES = np.divide(
     where=TRAJECTORIES_LENGTHS > 0,
 )
 _SORTED_TRAJECTORY_EFFICIENCIES = np.sort(TRAJECTORIES_EFFICIENCIES)
+# Normalized directions of the trajectories, handling zero-length trajectories
+_TRAJECTORIES_NORM_DX = np.divide(
+    TRAJECTORIES_DX,
+    TRAJECTORIES_DISPLACEMENTS,
+    out=np.zeros_like(TRAJECTORIES_DX, dtype=float),
+    where=TRAJECTORIES_DISPLACEMENTS != 0,
+).astype(np.float32)
+_TRAJECTORIES_NORM_DY = np.divide(
+    TRAJECTORIES_DY,
+    TRAJECTORIES_DISPLACEMENTS,
+    out=np.zeros_like(TRAJECTORIES_DY, dtype=float),
+    where=TRAJECTORIES_DISPLACEMENTS != 0,
+).astype(np.float32)
 
 
 def find_nearest_trajectory(
@@ -53,50 +67,104 @@ def find_nearest_trajectory(
     Returns:
         List[Trajectory]: A list of the top N nearest trajectories based on the combined score.
     """
-    # Calculate target vector components and length
-    dx_tar = target_end[0] - target_start[0]
-    dy_tar = target_end[1] - target_start[1]
-    len_tar = math.hypot(dx_tar, dy_tar)
+    return find_nearest_trajectories(target_start, [target_end], direction_weight, length_weight, top_n)
 
-    # Handle zero-length target vector case
-    if len_tar == 0:
-        lengths = np.array([traj["length"] for traj in LOADED_TRAJECTORIES])
-        # Get top N shortest trajectories
-        sorted_indices = np.argsort(lengths)[:top_n]
-        return [LOADED_TRAJECTORIES[i] for i in sorted_indices]
+
+def find_nearest_trajectories(
+    target_start: Point,
+    target_ends: list[Point],
+    direction_weight: float = 0.8,
+    length_weight: float = 0.2,
+    top_n: int = 5,
+    prefilter_size: int | None = None,
+) -> list[Trajectory]:
+    """Vectorized find_nearest_trajectory for several target ends at once.
+
+    Args:
+        target_start (Point): (x, y) coordinates of the target start point.
+        target_ends (List[Point]): (x, y) coordinates of the target end points.
+        direction_weight (float, optional): Weight for direction similarity in the combined score. Defaults to 0.8.
+        length_weight (float, optional): Weight for length similarity in the combined score. Defaults to 0.2.
+        top_n (int, optional): Number of top nearest trajectories to return per target end. Defaults to 5.
+        prefilter_size (int | None, optional): If set, only the first target end is scored against all trajectories;
+            the other target ends are scored against its prefilter_size best matches. This is much faster and
+            almost always gives the same result when the other target ends lie close to the first one.
+
+    Returns:
+        List[Trajectory]: The top N nearest trajectories of each target end, concatenated in target end order.
+    """
+    if prefilter_size is None or len(target_ends) == 1 or not top_n < prefilter_size < len(LOADED_TRAJECTORIES):
+        scores, zero_length = _trajectory_scores(target_start, target_ends, direction_weight, length_weight)
+        sorted_indices = _lowest_score_indices(scores, top_n)
+    else:
+        first_scores, first_zero_length = _trajectory_scores(
+            target_start, target_ends[:1], direction_weight, length_weight
+        )
+        subset = np.sort(np.argpartition(first_scores[0], prefilter_size - 1)[:prefilter_size])
+        rest_scores, rest_zero_length = _trajectory_scores(
+            target_start, target_ends[1:], direction_weight, length_weight, subset
+        )
+        sorted_indices = np.vstack(
+            (_lowest_score_indices(first_scores, top_n), subset[_lowest_score_indices(rest_scores, top_n)])
+        )
+        zero_length = np.concatenate((first_zero_length, rest_zero_length))
+
+    # Handle zero-length target vector case: Get top N shortest trajectories
+    if zero_length.any():
+        sorted_indices[zero_length] = np.argsort(TRAJECTORIES_LENGTHS)[:top_n]
+    return [LOADED_TRAJECTORIES[i] for i in sorted_indices.ravel().tolist()]
+
+
+def _trajectory_scores(
+    target_start: Point,
+    target_ends: list[Point],
+    direction_weight: float,
+    length_weight: float,
+    subset: NDArray[np.intp] | None = None,
+) -> tuple[NDArray[np.float32], NDArray[np.bool_]]:
+    """Score trajectories (all, or only those in subset) against each target end. Lower is better."""
+    norm_dx = _TRAJECTORIES_NORM_DX if subset is None else _TRAJECTORIES_NORM_DX[subset]
+    norm_dy = _TRAJECTORIES_NORM_DY if subset is None else _TRAJECTORIES_NORM_DY[subset]
+    displacements = _TRAJECTORIES_DISPLACEMENTS_F32 if subset is None else _TRAJECTORIES_DISPLACEMENTS_F32[subset]
+
+    # Calculate target vector components and length
+    dx_tar = np.array([target_end[0] - target_start[0] for target_end in target_ends], dtype=float)
+    dy_tar = np.array([target_end[1] - target_start[1] for target_end in target_ends], dtype=float)
+    len_tar = np.array([math.hypot(dx, dy) for dx, dy in zip(dx_tar.tolist(), dy_tar.tolist(), strict=True)])
+    zero_length = len_tar == 0
+    safe_len_tar = np.where(zero_length, 1.0, len_tar)
 
     # Normalize target vector to get direction
-    norm_dx_tar = dx_tar / len_tar
-    norm_dy_tar = dy_tar / len_tar
+    norm_dx_tar = (dx_tar / safe_len_tar).astype(np.float32)[:, np.newaxis]
+    norm_dy_tar = (dy_tar / safe_len_tar).astype(np.float32)[:, np.newaxis]
 
-    # Calculate normalized directions for trajectories, handling zero-length trajectories
-    norm_dx = np.divide(
-        TRAJECTORIES_DX,
-        TRAJECTORIES_DISPLACEMENTS,
-        out=np.zeros_like(TRAJECTORIES_DX, dtype=float),
-        where=TRAJECTORIES_DISPLACEMENTS != 0,
-    )
-    norm_dy = np.divide(
-        TRAJECTORIES_DY,
-        TRAJECTORIES_DISPLACEMENTS,
-        out=np.zeros_like(TRAJECTORIES_DY, dtype=float),
-        where=TRAJECTORIES_DISPLACEMENTS != 0,
-    )
-
+    # The score is computed in place in two buffers to avoid allocating a temporary array per operation.
     # Compute cosine similarity of directions: 1 for same, -1 for opposite, 0 for perpendicular
-    direction_similarity = norm_dx * norm_dx_tar + norm_dy * norm_dy_tar
+    combined_score = norm_dx * norm_dx_tar
+    buffer = np.multiply(norm_dy, norm_dy_tar)
+    combined_score += buffer
     # Convert similarity to distance (0 is best)
-    direction_distance = 1 - direction_similarity
+    np.subtract(1, combined_score, out=combined_score)
 
     # Calculate the ratio of length difference to the target length (normalized length difference)
-    length_diff_ratio = np.abs(TRAJECTORIES_DISPLACEMENTS - len_tar) / np.maximum(len_tar, 1)
+    np.subtract(displacements, len_tar.astype(np.float32)[:, np.newaxis], out=buffer)
+    np.abs(buffer, out=buffer)
+    buffer /= np.maximum(len_tar, 1).astype(np.float32)[:, np.newaxis]
 
     # Combine direction distance and length difference ratio to get a combined score
-    combined_score = (direction_weight * direction_distance) + (length_weight * length_diff_ratio)
+    combined_score *= direction_weight
+    buffer *= length_weight
+    combined_score += buffer
+    return combined_score, zero_length
 
-    # Get indices of trajectories with the lowest combined scores (best matches)
-    sorted_indices = np.argsort(combined_score)[:top_n]
-    return [LOADED_TRAJECTORIES[i] for i in sorted_indices]
+
+def _lowest_score_indices(scores: NDArray[np.float32], top_n: int) -> NDArray[np.intp]:
+    """Column indices of the top N lowest scores (best matches) of each row, sorted by score."""
+    if top_n < scores.shape[1]:
+        candidate_indices = np.argpartition(scores, top_n - 1, axis=1)[:, :top_n]
+        candidate_scores = np.take_along_axis(scores, candidate_indices, axis=1)
+        return np.take_along_axis(candidate_indices, np.argsort(candidate_scores, axis=1), axis=1)
+    return np.argsort(scores, axis=1)[:, :top_n]
 
 
 def find_closest_trajectory(
@@ -136,18 +204,18 @@ def find_closest_trajectory(
     if rng is None:
         rng = np.random.default_rng()
 
-    # Initial selection of top trajectories
-    top_trajectories = find_nearest_trajectory(target_start, target_end, top_n=num_nearest_to_sample)
-
-    # Iteratively refine top trajectories by perturbing target end and re-querying
-    for _ in range(random_sample_iterations):
-        perturbed_target_end = (
-            target_end[0] + rng.uniform(-len_tar * 0.1, len_tar * 0.1),
-            target_end[1] + rng.uniform(-len_tar * 0.1, len_tar * 0.1),
-        )
-        top_trajectories.extend(
-            find_nearest_trajectory(target_start, perturbed_target_end, top_n=num_nearest_to_sample),
-        )
+    # Select top trajectories for the target end and for randomly perturbed target ends
+    perturbations = rng.uniform(-len_tar * 0.1, len_tar * 0.1, size=(random_sample_iterations, 2)).tolist()
+    target_ends = [target_end]
+    target_ends += [(target_end[0] + offset_x, target_end[1] + offset_y) for offset_x, offset_y in perturbations]
+    # The perturbed target ends lie close to the target end, so their nearest trajectories are (almost always)
+    # among the nearest trajectories of the target end. Prefiltering to those makes the search much faster.
+    top_trajectories = find_nearest_trajectories(
+        target_start,
+        target_ends,
+        top_n=num_nearest_to_sample,
+        prefilter_size=128,
+    )
 
     # Compare path length with endpoint displacement so unusually straight and
     # unusually indirect recordings do not dominate generated paths.
@@ -228,7 +296,7 @@ def morph_trajectory(
     rotation_angle = angle_tar - angle_orig
 
     # Create rotation matrix using pre-calculated cosine and sine for efficiency
-    cos_a, sin_a = np.cos(rotation_angle), np.sin(rotation_angle)
+    cos_a, sin_a = math.cos(rotation_angle), math.sin(rotation_angle)
     rotation_matrix = np.array([[cos_a, -sin_a], [sin_a, cos_a]])
 
     # Apply transformation: Scale, Rotate, Translate
@@ -307,15 +375,14 @@ def jitter_trajectory(
     normals[moving, 0] = -tangents[moving, 1] / tangent_lengths[moving]
     normals[moving, 1] = tangents[moving, 0] / tangent_lengths[moving]
 
-    innovations = rng.normal(size=len(points))
-    lateral_offsets = np.empty(len(points))
-    lateral_offsets[0] = innovations[0]
+    innovations = rng.normal(size=len(points)).tolist()
+    lateral_offsets = [innovations[0]]
     correlation = 0.75
     innovation_scale = math.sqrt(1 - correlation**2)
-    for index in range(1, len(points)):
-        lateral_offsets[index] = correlation * lateral_offsets[index - 1] + innovation_scale * innovations[index]
+    for innovation in innovations[1:]:
+        lateral_offsets.append(correlation * lateral_offsets[-1] + innovation_scale * innovation)
 
-    jittered_points = points_np + normals * (lateral_offsets * adaptive_scales)[:, np.newaxis]
+    jittered_points = points_np + normals * (np.array(lateral_offsets) * adaptive_scales)[:, np.newaxis]
     jittered_points_list: list[Point] = jittered_points.tolist()
     return jittered_points_list
 
@@ -398,31 +465,28 @@ def knot_trajectory(
     traj_points_np = np.array(traj_points, dtype=float)
     knot_points = np.zeros_like(traj_points_np, dtype=float)
 
-    for _ in range(num_knots):
-        # Generate a biased point within the bounding box of target start and end
-        knot = generate_middle_biased_point(
-            target_start[0],
-            target_start[1],
-            target_end[0],
-            target_end[1],
-            rng=rng,
-        )
-        knot_np = np.array(knot)
+    # Generate biased points within the bounding box of target start and end
+    knots = np.array(
+        [
+            generate_middle_biased_point(target_start[0], target_start[1], target_end[0], target_end[1], rng=rng)
+            for _ in range(num_knots)
+        ],
+        dtype=float,
+    ).reshape(-1, 2)
 
-        # Calculate vectors from each trajectory point to the knot point
-        diff_vectors = knot_np - traj_points_np
-        distances = np.linalg.norm(diff_vectors, axis=1)
-        max_distance = np.max(distances)
+    # Calculate vectors from each trajectory point to each knot point
+    diff_vectors = knots[:, np.newaxis, :] - traj_points_np
+    distances = np.linalg.norm(diff_vectors, axis=2)
+    max_distances = np.max(distances, axis=1, initial=0.0)
 
-        # Skip adjustment if max distance is too small (avoid division issues)
-        if max_distance < 1e-6:
-            continue
-
+    # Skip knots whose max distance is too small (avoid division issues)
+    active = max_distances >= 1e-6
+    if active.any():
         # Normalize difference vectors and scale by proximity and knot strength
-        proximity = 1.0 - (distances / max_distance)
+        proximity = 1.0 - (distances[active] / max_distances[active, np.newaxis])
         scaling_factor = proximity * knot_strength
-        knot_offsets = diff_vectors * scaling_factor[:, np.newaxis]
-        knot_points += knot_offsets
+        knot_offsets = diff_vectors[active] * scaling_factor[:, :, np.newaxis]
+        knot_points += np.sum(knot_offsets, axis=0)
 
     # Keep knot displacements small and fade them out at the endpoints.
     offsets = np.copysign(np.sqrt(np.abs(knot_points)), knot_points)
